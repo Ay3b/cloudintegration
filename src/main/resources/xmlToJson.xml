@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <beans xmlns="http://www.springframework.org/schema/beans"
        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
        xmlns:int="http://www.springframework.org/schema/integration"
@@ -24,7 +23,24 @@
 
     <int:channel id="inputChannel"/>
 
-    <int:service-activator input-channel="inputChannel"
+    <!-- Pattern filter, sur true qui laisse donc passer tous les messages -->
+    <int:filter input-channel="inputChannel" output-channel="toLoggingChannel" expression="true"/>
+
+    <!-- Channel de logs et pattern log -->
+    <int:channel id="toLoggingChannel"/>
+    <int:logging-channel-adapter channel="toLoggingChannel" level="INFO"/>
+
+    <!-- Ajout d'un router après le logging pour rediriger vers le bon channel de conversion uniquement pour les fichiers qui se terminent en .xml -->
+    <int:channel id="routingChannel"/>
+    <int:bridge input-channel="toLoggingChannel" output-channel="routingChannel"/>
+    <int:router input-channel="routingChannel" expression="headers['file_name'].endsWith('.xml') ? 'xmlChannel' : null">
+        <int:mapping value=".xml" channel="xmlChannel"/>
+    </int:router>
+
+    <!-- Channel de transformation XML vers JSON -->
+    <int:channel id="xmlChannel"/>
+
+    <int:service-activator input-channel="xmlChannel"
                            output-channel="fileWriterChannel"
                            ref="xmlToJsonTransformer"
                            method="transformXmlToJson"/>
